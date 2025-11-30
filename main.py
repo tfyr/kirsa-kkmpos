@@ -158,7 +158,7 @@ def resolve_get_kkm_counters():
             return cash_counter
     except Exception as e:
         logger.error("Unexpected error in get_kkm_counters: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
 if __name__ == "__main__":
