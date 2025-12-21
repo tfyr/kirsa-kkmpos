@@ -152,8 +152,8 @@ def resolve_get_kkm_counters():
             cash_counter['shiftNumber'] = viki.get_shift_number()
             cash_counter['cashTotalX'] = viki.get_cash_total_x()
             cash_counter['getShiftOpeningDateTime'] = str(viki.get_shift_opening_date_time()['date'])
-
-            cash_counter['firstUnsendedDatetime']  = str(viki.get_first_unsended()['firstUnsendedDatetime'])
+            fudt = viki.get_first_unsended()['firstUnsendedDatetime']
+            cash_counter['firstUnsendedDatetime']  = str(fudt) if fudt else None
             cash_counter['getFnExpiryDate'] = str(viki.get_fn_expiry_date()['expiryDate'])
             return cash_counter
     except Exception as e:
