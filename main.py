@@ -116,7 +116,7 @@ def resolve_shift_and_next_cheque_number():
         kkt_document_opened = False
         try:
             shift = viki.get_shift_number()
-            cheque_number = viki.get_cheque_number() + 1
+            cheque_number = viki.get_cheque_number()
             return shift, cheque_number
         except Exception as e:
             logger.error("Unexpected error in resolve_shift_and_next_cheque_number: %s", e)
