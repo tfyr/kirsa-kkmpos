@@ -110,6 +110,19 @@ def resolve_cheque(p: ChequeParams):
             raise HTTPException(status_code=500, detail="Internal server error")
 
 
+@app.get("/kirsa-kkmpos/shift_and_next_cheque_number")
+def resolve_shift_and_next_cheque_number():
+    with VikiCM(viki_port, viki_baudrate) as viki:
+        kkt_document_opened = False
+        try:
+            shift = viki.get_shift_number()
+            cheque_number = viki.get_cheque_number() + 1
+            return shift, cheque_number
+        except Exception as e:
+            logger.error("Unexpected error in resolve_shift_and_next_cheque_number: %s", e)
+            raise HTTPException(status_code=500, detail="Internal server error")
+
+
 @app.post("/kirsa-kkmpos/cancel_cheque")
 def resolve_cancel_cheque():
     with VikiCM(viki_port, viki_baudrate) as viki:
@@ -150,6 +163,7 @@ def resolve_get_kkm_counters():
             cash_counter = viki.get_cash_counters()
             cash_counter['serialNumber'] = viki.get_serial_number()
             cash_counter['shiftNumber'] = viki.get_shift_number()
+            cash_counter['chequeNumber'] = viki.get_cheque_number()
             cash_counter['cashTotalX'] = viki.get_cash_total_x()
             cash_counter['getShiftOpeningDateTime'] = str(viki.get_shift_opening_date_time()['date'])
             fudt = viki.get_first_unsended()['firstUnsendedDatetime']
