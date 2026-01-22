@@ -42,7 +42,7 @@ async def log_requests(request: Request, call_next):
         return response
     except Exception as e:
         logger.error(f"Error processing request {request.method} {request.url}: {e}")
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
 @app.post("/kirsa-kkmpos/close_shift")
@@ -52,7 +52,7 @@ def resolve_close_shift():
             viki.close_shift("Иванова")
     except Exception as e:
         logger.error("Unexpected error in resolve_close_shift: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
 class ChequeParams(BaseModel):
@@ -102,12 +102,12 @@ def resolve_cheque(p: ChequeParams):
             except Exception as e:
                 if kkt_document_opened:
                     viki.cancel_check()
-                    raise e
+                raise e
             #viki.cancel_check()
             return shift, cheque_number
         except Exception as e:
             logger.error("Unexpected error in resolve_cancel_cheque: %s", e)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
 @app.get("/kirsa-kkmpos/shift_and_next_cheque_number")
@@ -120,7 +120,7 @@ def resolve_shift_and_next_cheque_number():
             return shift, cheque_number
         except Exception as e:
             logger.error("Unexpected error in resolve_shift_and_next_cheque_number: %s", e)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
 @app.post("/kirsa-kkmpos/cancel_cheque")
@@ -130,7 +130,7 @@ def resolve_cancel_cheque():
             viki.cancel_check()
         except Exception as e:
             logger.error("Unexpected error in resolve_cancel_cheque: %s", e)
-            raise HTTPException(status_code=500, detail="Internal server error")
+            raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
 @app.post("/kirsa-kkmpos/open_shift")
@@ -140,7 +140,8 @@ def resolve_open_shift():
             viki.open_shift('Иванова')
     except Exception as e:
         logger.error("Unexpected error in resolve_open_shift: %s", e)
-        raise HTTPException(status_code=500, detail="Internal server error")
+        raise HTTPException(status_code=500, detail=f"Internal server error {e}")
+
 
 @app.get("/kirsa-kkmpos/get_kkm_status")
 def resolve_get_kkm_status(auto_start_work_if_need=True):
