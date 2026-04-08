@@ -65,55 +65,58 @@ class ChequeParams(BaseModel):
     pay_type: int | None = None
     data: str
 
-@app.post("/kirsa-kkmpos/cheque")
-def resolve_cheque(p: ChequeParams):
+
+def cheque(data, pay_type, beznal, cash, operation_type, tax_group_value, no_print, tax_rate_value):
     with VikiCM(viki_port, viki_baudrate) as viki:
         kkt_document_opened = False
         try:
-            try:
-                data = json.loads(p.data)
-                beznal = Decimal(json.loads(p.beznal))
-                cash = Decimal(json.loads(p.cash))
-                viki.open_check(p.operation_type, p.tax_group_value, p.no_print)
-                kkt_document_opened = True
-                shift = viki.get_shift_number()
-                cheque_number = viki.get_cheque_number()
+            viki.open_check(operation_type, tax_group_value, no_print)
+            kkt_document_opened = True
+            shift = viki.get_shift_number()
+            cheque_number = viki.get_cheque_number()
 
-                total = 0
-                for i, pos in enumerate(data, 1):
-                    if Decimal(pos['amount']) > 0:
-                        if p.operation_type == 0:
-                            viki.income(round(Decimal(pos['amount']), 3), round(Decimal(pos['price']), 2), pos['name'],
-                                        p.tax_rate_value, None)
-                        elif p.operation_type == 1:
-                            viki.refund(round(Decimal(pos['amount']), 3), round(Decimal(pos['price']), 2), pos['name'],
-                                        p.tax_rate_value, None)
-                        else:
-                            raise Exception('unknown operation type')
-                        total += round(Decimal(pos['amount']), 3) * round(Decimal(pos['price']), 2)
-                if beznal is not None or cash is not None:
-                    if beznal:
-                        viki.payment(1, round(beznal, 2), None)
-                    if cash:
-                        viki.payment(0, round(cash, 2), None)
-                else:
-                    viki.payment(1 if p.pay_type else 0, round(total, 2), None)
-                viki.close_check()
-            except Exception as e:
-                if kkt_document_opened:
-                    viki.cancel_check()
-                raise e
-            #viki.cancel_check()
+            total = 0
+            for i, pos in enumerate(data, 1):
+                if Decimal(pos['amount']) > 0:
+                    if operation_type == 0:
+                        viki.income(round(Decimal(pos['amount']), 3), round(Decimal(pos['price']), 2), pos['name'],
+                                    tax_rate_value, None)
+                    elif operation_type == 1:
+                        viki.refund(round(Decimal(pos['amount']), 3), round(Decimal(pos['price']), 2), pos['name'],
+                                    tax_rate_value, None)
+                    else:
+                        raise Exception('unknown operation type')
+                    total += round(Decimal(pos['amount']), 3) * round(Decimal(pos['price']), 2)
+            if beznal is not None or cash is not None:
+                if beznal:
+                    viki.payment(1, round(beznal, 2), None)
+                if cash:
+                    viki.payment(0, round(cash, 2), None)
+            else:
+                viki.payment(1 if pay_type else 0, round(total, 2), None)
+            viki.close_check()
             return shift, cheque_number
         except Exception as e:
+            if kkt_document_opened:
+                viki.cancel_check()
             logger.error("Unexpected error in resolve_cancel_cheque: %s", e)
             raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
-@app.get("/kirsa-kkmpos/shift_and_next_cheque_number")
-def resolve_shift_and_next_cheque_number():
+@app.post("/kirsa-kkmpos/cheque")
+def resolve_cheque(p: ChequeParams):
+    return cheque(json.loads(p.data),
+                  p.pay_type,
+                  Decimal(json.loads(p.beznal)),
+                  Decimal(json.loads(p.cash)),
+                  p.operation_type,
+                  p.tax_group_value,
+                  p.no_print,
+                  p.tax_rate_value,
+                  )
+
+def get_shift_and_next_cheque_number():
     with VikiCM(viki_port, viki_baudrate) as viki:
-        kkt_document_opened = False
         try:
             shift = viki.get_shift_number()
             cheque_number = viki.get_cheque_number()
@@ -121,6 +124,10 @@ def resolve_shift_and_next_cheque_number():
         except Exception as e:
             logger.error("Unexpected error in resolve_shift_and_next_cheque_number: %s", e)
             raise HTTPException(status_code=500, detail=f"Internal server error {e}")
+
+@app.get("/kirsa-kkmpos/shift_and_next_cheque_number")
+def resolve_shift_and_next_cheque_number():
+    return get_shift_and_next_cheque_number()
 
 
 @app.post("/kirsa-kkmpos/cancel_cheque")
@@ -157,8 +164,7 @@ def resolve_get_kkm_status(auto_start_work_if_need=True):
         raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
-@app.get("/kirsa-kkmpos/get_kkm_counters")
-def resolve_get_kkm_counters():
+def get_kkm_counters():
     try:
         with VikiCM(viki_port, viki_baudrate, viki_options) as viki:
             cash_counter = viki.get_cash_counters()
@@ -175,6 +181,9 @@ def resolve_get_kkm_counters():
         logger.error("Unexpected error in get_kkm_counters: %s", e)
         raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
+@app.get("/kirsa-kkmpos/get_kkm_counters")
+def resolve_get_kkm_counters():
+    return get_kkm_counters()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
