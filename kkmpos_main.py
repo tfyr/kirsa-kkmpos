@@ -5,6 +5,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
+from kkmpos_lib import cheque
 from vikiprint import VikiCM
 
 from fastapi import FastAPI, HTTPException, Request
@@ -64,43 +65,6 @@ class ChequeParams(BaseModel):
     cash: str
     pay_type: int | None = None
     data: str
-
-
-def cheque(data, pay_type, beznal, cash, operation_type, tax_group_value, no_print, tax_rate_value):
-    with VikiCM(viki_port, viki_baudrate) as viki:
-        kkt_document_opened = False
-        try:
-            viki.open_check(operation_type, tax_group_value, no_print)
-            kkt_document_opened = True
-            shift = viki.get_shift_number()
-            cheque_number = viki.get_cheque_number()
-
-            total = 0
-            for i, pos in enumerate(data, 1):
-                if Decimal(pos['amount']) > 0:
-                    if operation_type == 0:
-                        viki.income(round(Decimal(pos['amount']), 3), round(Decimal(pos['price']), 2), pos['name'],
-                                    tax_rate_value, None)
-                    elif operation_type == 1:
-                        viki.refund(round(Decimal(pos['amount']), 3), round(Decimal(pos['price']), 2), pos['name'],
-                                    tax_rate_value, None)
-                    else:
-                        raise Exception('unknown operation type')
-                    total += round(Decimal(pos['amount']), 3) * round(Decimal(pos['price']), 2)
-            if beznal is not None or cash is not None:
-                if beznal:
-                    viki.payment(1, round(beznal, 2), None)
-                if cash:
-                    viki.payment(0, round(cash, 2), None)
-            else:
-                viki.payment(1 if pay_type else 0, round(total, 2), None)
-            viki.close_check()
-            return shift, cheque_number
-        except Exception as e:
-            if kkt_document_opened:
-                viki.cancel_check()
-            logger.error("Unexpected error in resolve_cancel_cheque: %s", e)
-            raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
 @app.post("/kirsa-kkmpos/cheque")
