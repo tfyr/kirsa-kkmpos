@@ -45,7 +45,11 @@ def cheque(data, pay_type, beznal, cash, operation_type, tax_group_value, no_pri
             viki.close_check()
             return shift, cheque_number
         except Exception as e:
+            logger.error(e)
             if kkt_document_opened:
-                viki.cancel_check()
-            logger.error("Unexpected error in resolve_cancel_cheque: %s", e)
+                try:
+                    viki.cancel_check()
+                except Exception as e:
+                    logger.error("Unexpected error in while viki.cancel_check call: %s", e)
+            logger.error("Unexpected error in cheque: %s", e)
             raise Exception(f"status_code=500, Internal server error {e}") # HTTPException(status_code=500, detail=f"Internal server error {e}")
