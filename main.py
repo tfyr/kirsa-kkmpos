@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from kkmpos_lib import cheque
+from kkmpos_lib import cheque, get_shift_and_next_cheque_number
 from vikiprint import VikiCM
 
 from fastapi import FastAPI, HTTPException, Request
@@ -79,15 +79,6 @@ def resolve_cheque(p: ChequeParams):
                   p.tax_rate_value,
                   )
 
-def get_shift_and_next_cheque_number():
-    with VikiCM(viki_port, viki_baudrate) as viki:
-        try:
-            shift = viki.get_shift_number()
-            cheque_number = viki.get_cheque_number()
-            return shift, cheque_number
-        except Exception as e:
-            logger.error("Unexpected error in resolve_shift_and_next_cheque_number: %s", e)
-            raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 @app.get("/kirsa-kkmpos/shift_and_next_cheque_number")
 def resolve_shift_and_next_cheque_number():
