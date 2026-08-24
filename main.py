@@ -5,13 +5,15 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from kkmpos_lib import cheque, get_shift_and_next_cheque_number
+from kkmpos_lib import cheque, get_shift_and_next_cheque_number, viki_or_shrikh
+from shtrikh import ShtrikhCM
 from vikiprint import VikiCM
 
 from fastapi import FastAPI, HTTPException, Request
 import uvicorn
 
-from settings_local import viki_port, viki_baudrate, viki_options
+from settings_local import kkt_port, kkt_baudrate, viki_options
+
 
 # Настройка логирования
 logging.basicConfig(
@@ -49,8 +51,13 @@ async def log_requests(request: Request, call_next):
 @app.post("/kirsa-kkmpos/close_shift")
 def resolve_close_shift():
     try:
-        with VikiCM(viki_port, viki_baudrate) as viki:
-            viki.close_shift("Иванова")
+        if viki_or_shrikh:
+            with VikiCM(kkt_port, kkt_baudrate) as viki:
+                viki.close_shift("Иванова")
+        else:
+            with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as kkm_cm:
+                return kkm_cm.close_shift()
+
     except Exception as e:
         logger.error("Unexpected error in resolve_close_shift: %s", e)
         raise HTTPException(status_code=500, detail=f"Internal server error {e}")
@@ -69,15 +76,16 @@ class ChequeParams(BaseModel):
 
 @app.post("/kirsa-kkmpos/cheque")
 def resolve_cheque(p: ChequeParams):
-    return cheque(json.loads(p.data),
-                  p.pay_type,
-                  Decimal(json.loads(p.beznal)),
-                  Decimal(json.loads(p.cash)),
-                  p.operation_type,
-                  p.tax_group_value,
-                  p.no_print,
-                  p.tax_rate_value,
-                  )
+        return cheque(
+                    json.loads(p.data),
+                    p.pay_type,
+                    Decimal(json.loads(p.beznal)),
+                    Decimal(json.loads(p.cash)),
+                    p.operation_type,
+                    p.tax_group_value,
+                    p.no_print,
+                    p.tax_rate_value,
+                    )
 
 
 @app.get("/kirsa-kkmpos/shift_and_next_cheque_number")
@@ -87,7 +95,7 @@ def resolve_shift_and_next_cheque_number():
 
 @app.post("/kirsa-kkmpos/cancel_cheque")
 def resolve_cancel_cheque():
-    with VikiCM(viki_port, viki_baudrate) as viki:
+    with VikiCM(kkt_port, kkt_baudrate) as viki:
         try:
             viki.cancel_check()
         except Exception as e:
@@ -98,22 +106,37 @@ def resolve_cancel_cheque():
 @app.post("/kirsa-kkmpos/open_shift")
 def resolve_open_shift():
     try:
-        with VikiCM(viki_port, viki_baudrate) as viki:
-            viki.open_shift('Иванова')
+        if viki_or_shrikh:
+            with VikiCM(kkt_port, kkt_baudrate) as viki:
+                viki.open_shift('Иванова')
+        else:
+            with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as kkm_cm:
+                kkm_cm.open_shift('Иванова')
     except Exception as e:
         logger.error("Unexpected error in resolve_open_shift: %s", e)
         raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
 @app.get("/kirsa-kkmpos/get_kkm_status")
-def resolve_get_kkm_status(auto_start_work_if_need=True):
+def resolve_get_kkm_status(auto_start_work_if_need=True, normalize=False):
     try:
-        with VikiCM(viki_port, viki_baudrate, viki_options) as viki:
-            ret = viki.get_kkm_status()
-            current_flags = ret['currentFlags']
-            if current_flags& 0b01 and auto_start_work_if_need:  # no started work
-                viki.start_work()
-            return ret
+        if viki_or_shrikh:
+            with VikiCM(kkt_port, kkt_baudrate, viki_options) as kkm_cm:
+                ret = kkm_cm.get_kkm_status()
+                current_flags = ret['currentFlags']
+                if current_flags& 0b01 and auto_start_work_if_need:  # no started work
+                    kkm_cm.start_work()
+                return ret
+        else:
+            with ShtrikhCM(kkt_port, kkt_baudrate,) as kkm_cm:
+                ret= kkm_cm.get_kkm_status()
+                if 'true'==normalize and ret and 'state' in ret and ret['state']==8:
+                    if ret['sub_state']==3:  # ждем продолжения печати
+                        kkm_cm.continue_print()
+                    else:
+                        kkm_cm.nulling_check()
+                    ret = kkm_cm.get_kkm_status()
+                return ret
     except Exception as e:
         logger.error("Unexpected error in get_kkm_status: %s", e)
         raise HTTPException(status_code=500, detail=f"Internal server error {e}")
@@ -121,17 +144,37 @@ def resolve_get_kkm_status(auto_start_work_if_need=True):
 
 def get_kkm_counters():
     try:
-        with VikiCM(viki_port, viki_baudrate, viki_options) as viki:
-            cash_counter = viki.get_cash_counters()
-            cash_counter['serialNumber'] = viki.get_serial_number()
-            cash_counter['shiftNumber'] = viki.get_shift_number()
-            cash_counter['chequeNumber'] = viki.get_cheque_number()
-            cash_counter['cashTotalX'] = viki.get_cash_total_x()
-            cash_counter['getShiftOpeningDateTime'] = str(viki.get_shift_opening_date_time()['date'])
-            fudt = viki.get_first_unsended()['firstUnsendedDatetime']
-            cash_counter['firstUnsendedDatetime']  = str(fudt) if fudt else None
-            cash_counter['getFnExpiryDate'] = str(viki.get_fn_expiry_date()['expiryDate'])
-            return cash_counter
+        if viki_or_shrikh:
+            with VikiCM(kkt_port, kkt_baudrate, viki_options) as viki:
+                cash_counter = viki.get_cash_counters()
+                cash_counter['serialNumber'] = viki.get_serial_number()
+                cash_counter['shiftNumber'] = viki.get_shift_number()
+                cash_counter['chequeNumber'] = viki.get_cheque_number()
+                cash_counter['cashTotalX'] = viki.get_cash_total_x()
+                cash_counter['getShiftOpeningDateTime'] = str(viki.get_shift_opening_date_time()['date'])
+                fudt = viki.get_first_unsended()['firstUnsendedDatetime']
+                cash_counter['firstUnsendedDatetime']  = str(fudt) if fudt else None
+                cash_counter['getFnExpiryDate'] = str(viki.get_fn_expiry_date()['expiryDate'])
+                return cash_counter
+        else:  # todo shtrikh
+            with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as shtrikh:
+                cash_counter = dict()
+                shtrikh.beep()
+                #cash_counter = viki.get_cash_counters()
+                cash_counter['serialNumber'] = shtrikh.get_serial_number()
+                cash_counter['shiftNumber'] = shtrikh.get_shift_number()
+                #cash_counter['chequeNumber'] = viki.get_cheque_number()
+                cash_counter['cashTotalX'] = shtrikh.get_cash_total_x()
+                sod = shtrikh.get_shift_opening_date_time()['date']
+                cash_counter['getShiftOpeningDateTime'] = str(sod) if sod else None
+                exchangeStatus = shtrikh.get_exchange_status()
+
+
+                fudt = exchangeStatus['firstUnsended']
+
+                cash_counter['firstUnsendedDatetime'] = str(fudt) if fudt else None
+                cash_counter['getFnExpiryDate'] = shtrikh.get_fn_expiry_date()['expiryDate']
+                return cash_counter
     except Exception as e:
         logger.error("Unexpected error in get_kkm_counters: %s", e)
         raise HTTPException(status_code=500, detail=f"Internal server error {e}")
