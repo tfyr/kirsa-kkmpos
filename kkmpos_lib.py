@@ -3,7 +3,6 @@ from shtrikh import ShtrikhCM
 from vikiprint import VikiCM
 from decimal import Decimal
 import logging
-from fastapi import HTTPException
 
 viki_or_shrikh = 0
 
@@ -26,7 +25,7 @@ def get_shift_and_next_cheque_number():
             return shift, cheque_number
         except Exception as e:
             logger.error("Unexpected error in resolve_shift_and_next_cheque_number: %s", e)
-            raise HTTPException(status_code=500, detail=f"Internal server error {e}")
+            raise Exception(f"Internal server error {e}")
 
 
 def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_print, tax_rate_value):
