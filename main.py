@@ -159,12 +159,15 @@ def get_kkm_counters():
         else:  # todo shtrikh
             with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as shtrikh:
                 cash_counter = dict()
-                shtrikh.beep()
                 #cash_counter = viki.get_cash_counters()
                 cash_counter['serialNumber'] = shtrikh.get_serial_number()
                 cash_counter['shiftNumber'] = shtrikh.get_shift_number()
                 #cash_counter['chequeNumber'] = viki.get_cheque_number()
+                cash_counter['cashTotal'] = shtrikh.get_cash_total()
                 cash_counter['cashTotalX'] = shtrikh.get_cash_total_x()
+                cash_counter['cardTotal'] = shtrikh.get_card_total()
+                cash_counter['cashReturn'] = shtrikh.get_refund_cash_total()
+                cash_counter['cardReturn'] = shtrikh.get_refund_card_total()
                 sod = shtrikh.get_shift_opening_date_time()['date']
                 cash_counter['getShiftOpeningDateTime'] = str(sod) if sod else None
                 exchangeStatus = shtrikh.get_exchange_status()
