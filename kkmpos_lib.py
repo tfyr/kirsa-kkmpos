@@ -40,7 +40,12 @@ def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_prin
                 open_check_operation_type = 2
             else:
                 raise Exception(f'unhandling operation type {operation_type}')
-            kkt_cm.open_check(open_check_operation_type, tax_group_value, no_print)
+
+            if not viki_or_shrikh:
+                kkt_cm.set_table_value(17, 1, 7, 1 if no_print else 0)
+                    #prev_no_print_value = kkt_cm.get_table_value(17, 1, 7)
+
+            kkt_cm.open_check(open_check_operation_type, tax_group_value, None)
             kkt_document_opened = True
             # shift = viki.get_shift_number()
             # cheque_number = viki.get_cheque_number()
@@ -65,6 +70,7 @@ def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_prin
             else:
                 kkt_cm.payment(1 if pay_type else 0, round(total, 2), None)
             cc = kkt_cm.close_check(cash, ecash, tax_group_value)
+
             kkt_document_closed=True
             return kkt_serial_number, cc['shift'], cc['chequeNumber'], cc['fd'], cc['fp']
         except Exception as e1:
