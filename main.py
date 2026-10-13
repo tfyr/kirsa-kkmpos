@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from kkmpos_lib import cheque, get_shift_and_next_cheque_number, viki_or_shrikh
+from kkmpos_lib import cheque, get_shift_and_next_cheque_number, viki_or_shrikh, open_shift, close_shift
 from shtrikh import ShtrikhCM
 from vikiprint import VikiCM
 
@@ -51,13 +51,7 @@ async def log_requests(request: Request, call_next):
 @app.post("/kirsa-kkmpos/close_shift")
 def resolve_close_shift():
     try:
-        if viki_or_shrikh:
-            with VikiCM(kkt_port, kkt_baudrate) as viki:
-                viki.close_shift("Иванова")
-        else:
-            with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as kkm_cm:
-                return kkm_cm.close_shift()
-
+        close_shift()
     except Exception as e:
         logger.error("Unexpected error in resolve_close_shift: %s", e)
         raise HTTPException(status_code=500, detail=f"Internal server error {e}")
@@ -106,12 +100,7 @@ def resolve_cancel_cheque():
 @app.post("/kirsa-kkmpos/open_shift")
 def resolve_open_shift():
     try:
-        if viki_or_shrikh:
-            with VikiCM(kkt_port, kkt_baudrate) as viki:
-                viki.open_shift('Иванова')
-        else:
-            with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as kkm_cm:
-                kkm_cm.open_shift('Иванова')
+        open_shift()
     except Exception as e:
         logger.error("Unexpected error in resolve_open_shift: %s", e)
         raise HTTPException(status_code=500, detail=f"Internal server error {e}")

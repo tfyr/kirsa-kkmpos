@@ -28,6 +28,23 @@ def get_shift_and_next_cheque_number():
             raise Exception(f"Internal server error {e}")
 
 
+def open_shift():
+    if viki_or_shrikh:
+        with VikiCM(kkt_port, kkt_baudrate) as viki:
+            viki.open_shift('Иванова')
+    else:
+        with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as kkm_cm:
+            kkm_cm.open_shift('Иванова')
+
+def close_shift():
+    if viki_or_shrikh:
+        with VikiCM(kkt_port, kkt_baudrate) as viki:
+            viki.close_shift("Иванова")
+    else:
+        with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as kkm_cm:
+            return kkm_cm.close_shift()
+
+
 def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_print, tax_rate_value):
     kkt_document_opened = False
     kkt_document_closed = False
