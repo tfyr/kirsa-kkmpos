@@ -52,16 +52,19 @@ def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_prin
 
             total = 0
             for i, pos in enumerate(data, 1):
-                if Decimal(pos['amount']) > 0:
+                amount = pos['amount'] if isinstance(pos, dict) else pos.amount
+                if Decimal(amount) > 0:
+                    price = pos['price'] if isinstance(pos, dict) else pos.price
+                    name = pos['name'] if isinstance(pos, dict) else pos.name
                     if operation_type == 0:
-                        kkt_cm.income(round(Decimal(pos['amount']), 3), round(Decimal(pos['price']), 2), pos['name'],
+                        kkt_cm.income(round(Decimal(amount), 3), round(Decimal(price), 2), name,
                                     tax_rate_value, None)
                     elif operation_type == 1:
-                        kkt_cm.refund(round(Decimal(pos['amount']), 3), round(Decimal(pos['price']), 2), pos['name'],
+                        kkt_cm.refund(round(Decimal(amount), 3), round(Decimal(price), 2), name,
                                     tax_rate_value, None)
                     else:
                         raise Exception('unknown operation type')
-                    total += round(Decimal(pos['amount']), 3) * round(Decimal(pos['price']), 2)
+                    total += round(Decimal(amount), 3) * round(Decimal(price), 2)
             if ecash is not None or cash is not None:
                 if ecash:
                     kkt_cm.payment(1, round(ecash, 2), None)
