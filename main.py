@@ -5,7 +5,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from kkmpos_lib import cheque, get_shift_and_next_cheque_number, viki_or_shrikh, open_shift, close_shift
+from kkmpos_lib import cheque, get_shift_and_next_cheque_number, viki_or_shrikh, open_shift, close_shift, kkm_counters
 from shtrikh import ShtrikhCM
 from vikiprint import VikiCM
 
@@ -133,40 +133,7 @@ def resolve_get_kkm_status(auto_start_work_if_need=True, normalize=False):
 
 def get_kkm_counters():
     try:
-        if viki_or_shrikh:
-            with VikiCM(kkt_port, kkt_baudrate, viki_options) as viki:
-                cash_counter = viki.get_cash_counters()
-                cash_counter['serialNumber'] = viki.get_serial_number()
-                cash_counter['shiftNumber'] = viki.get_shift_number()
-                cash_counter['chequeNumber'] = viki.get_cheque_number()
-                cash_counter['cashTotalX'] = viki.get_cash_total_x()
-                cash_counter['getShiftOpeningDateTime'] = str(viki.get_shift_opening_date_time()['date'])
-                fudt = viki.get_first_unsended()['firstUnsendedDatetime']
-                cash_counter['firstUnsendedDatetime']  = str(fudt) if fudt else None
-                cash_counter['getFnExpiryDate'] = str(viki.get_fn_expiry_date()['expiryDate'])
-                return cash_counter
-        else:  # todo shtrikh
-            with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as shtrikh:
-                cash_counter = dict()
-                #cash_counter = viki.get_cash_counters()
-                cash_counter['serialNumber'] = shtrikh.get_serial_number()
-                cash_counter['shiftNumber'] = shtrikh.get_shift_number()
-                #cash_counter['chequeNumber'] = viki.get_cheque_number()
-                cash_counter['cashTotal'] = shtrikh.get_cash_total()
-                cash_counter['cashTotalX'] = shtrikh.get_cash_total_x()
-                cash_counter['cardTotal'] = shtrikh.get_card_total()
-                cash_counter['cashReturn'] = shtrikh.get_refund_cash_total()
-                cash_counter['cardReturn'] = shtrikh.get_refund_card_total()
-                sod = shtrikh.get_shift_opening_date_time()['date']
-                cash_counter['getShiftOpeningDateTime'] = str(sod) if sod else None
-                exchangeStatus = shtrikh.get_exchange_status()
-
-
-                fudt = exchangeStatus['firstUnsended']
-
-                cash_counter['firstUnsendedDatetime'] = str(fudt) if fudt else None
-                cash_counter['getFnExpiryDate'] = shtrikh.get_fn_expiry_date()['expiryDate']
-                return cash_counter
+        return kkm_counters()
     except Exception as e:
         logger.error("Unexpected error in get_kkm_counters: %s", e)
         raise HTTPException(status_code=500, detail=f"Internal server error {e}")
