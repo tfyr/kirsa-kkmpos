@@ -103,6 +103,13 @@ def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_prin
             logger.error("Unexpected error in cheque: %s", e1)
             raise Exception(f"status_code=500, Internal server error {e1}") # HTTPException(status_code=500, detail=f"Internal server error {e}")
 
+def xis_shift_opened():
+    if viki_or_shrikh:
+        with VikiCM(kkt_port, kkt_baudrate, viki_options) as viki:
+            return viki.is_shift_opened()
+    else:  # todo shtrikh
+        with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as shtrikh:
+            pass
 
 def kkm_counters():
     if viki_or_shrikh:
