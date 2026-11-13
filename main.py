@@ -5,15 +5,14 @@ from decimal import Decimal
 
 from pydantic import BaseModel
 
-from kkmpos_lib import cheque, get_shift_and_next_cheque_number, viki_or_shrikh, open_shift, close_shift, kkm_counters
+from kkmpos_lib import cheque, get_shift_and_next_cheque_number, open_shift, close_shift, kkm_counters
 from shtrikh import ShtrikhCM
 from vikiprint import VikiCM
 
 from fastapi import FastAPI, HTTPException, Request
 import uvicorn
 
-from settings_local import kkt_port, kkt_baudrate, viki_options
-
+from settings_kkmpos_local import kkt_port, kkt_baudrate, viki_options, kkt_type
 
 # Настройка логирования
 logging.basicConfig(
@@ -109,7 +108,7 @@ def resolve_open_shift():
 @app.get("/kirsa-kkmpos/get_kkm_status")
 def resolve_get_kkm_status(auto_start_work_if_need=True, normalize=False):
     try:
-        if viki_or_shrikh:
+        if kkt_type=='viki':
             with VikiCM(kkt_port, kkt_baudrate, viki_options) as kkm_cm:
                 ret = kkm_cm.get_kkm_status()
                 current_flags = ret['currentFlags']

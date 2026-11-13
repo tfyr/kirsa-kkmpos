@@ -1,10 +1,9 @@
-from settings_local import kkt_port, kkt_baudrate, viki_options
+from settings_kkmpos_local import kkt_port, kkt_baudrate, viki_options, kkt_type
 from shtrikh import ShtrikhCM
 from vikiprint import VikiCM
 from decimal import Decimal
 import logging
 
-viki_or_shrikh = 1
 
 logging.basicConfig(
     level=logging.INFO,
@@ -29,7 +28,7 @@ def get_shift_and_next_cheque_number():
 
 
 def open_shift():
-    if viki_or_shrikh:
+    if kkt_type == 'viki':
         with VikiCM(kkt_port, kkt_baudrate) as viki:
             viki.open_shift('Иванова')
     else:
@@ -37,7 +36,7 @@ def open_shift():
             kkm_cm.open_shift('Иванова')
 
 def close_shift():
-    if viki_or_shrikh:
+    if kkt_type == 'viki':
         with VikiCM(kkt_port, kkt_baudrate) as viki:
             viki.close_shift("Иванова")
     else:
@@ -48,7 +47,7 @@ def close_shift():
 def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_print, tax_rate_value):
     kkt_document_opened = False
     kkt_document_closed = False
-    with VikiCM(kkt_port, kkt_baudrate) if viki_or_shrikh else ShtrikhCM(kkt_port, kkt_baudrate) as kkt_cm:
+    with VikiCM(kkt_port, kkt_baudrate) if kkt_type=='viki' else ShtrikhCM(kkt_port, kkt_baudrate) as kkt_cm:
         try:
             kkt_serial_number = kkt_cm.get_serial_number()
             if operation_type==0:
@@ -58,7 +57,7 @@ def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_prin
             else:
                 raise Exception(f'unhandling operation type {operation_type}')
 
-            if not viki_or_shrikh:
+            if kkt_type=='shtrikh':
                 kkt_cm.set_table_value(17, 1, 7, 1 if no_print else 0)
                     #prev_no_print_value = kkt_cm.get_table_value(17, 1, 7)
 
@@ -105,7 +104,7 @@ def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_prin
             raise e1
 
 def xis_shift_opened():
-    if viki_or_shrikh:
+    if kkt_type == 'viki':
         with VikiCM(kkt_port, kkt_baudrate, viki_options) as viki:
             return viki.is_shift_opened()
     else:  # todo shtrikh
@@ -113,7 +112,7 @@ def xis_shift_opened():
             pass
 
 def kkm_counters():
-    if viki_or_shrikh:
+    if kkt_type == 'viki':
         with VikiCM(kkt_port, kkt_baudrate, viki_options) as viki:
             cash_counter = viki.get_cash_counters()
             cash_counter['serialNumber'] = viki.get_serial_number()
@@ -125,7 +124,7 @@ def kkm_counters():
             cash_counter['firstUnsendedDatetime'] = str(fudt) if fudt else None
             cash_counter['getFnExpiryDate'] = str(viki.get_fn_expiry_date()['expiryDate'])
             return cash_counter
-    else:  # todo shtrikh
+    else:
         with ShtrikhCM(kkt_port, kkt_baudrate, viki_options) as shtrikh:
             cash_counter = dict()
             # cash_counter = viki.get_cash_counters()
