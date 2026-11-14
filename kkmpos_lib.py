@@ -61,7 +61,7 @@ def cheque(data, pay_type, ecash, cash, operation_type, tax_group_value, no_prin
                 kkt_cm.set_table_value(17, 1, 7, 1 if no_print else 0)
                     #prev_no_print_value = kkt_cm.get_table_value(17, 1, 7)
 
-            kkt_cm.open_check(open_check_operation_type, tax_group_value, None)
+            kkt_cm.open_check(open_check_operation_type, tax_group_value, no_print)
             kkt_document_opened = True
             # shift = viki.get_shift_number()
             # cheque_number = viki.get_cheque_number()
