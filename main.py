@@ -80,6 +80,11 @@ def resolve_cheque(p: ChequeParams):
                     p.tax_rate_value,
                     )
 
+@app.get("/kirsa-kkmpos/continue_print")
+def resolve_continue_print():
+    with ShtrikhCM(kkt_port, kkt_baudrate, ) as kkm_cm:
+        kkm_cm.continue_print()
+
 
 @app.get("/kirsa-kkmpos/shift_and_next_cheque_number")
 def resolve_shift_and_next_cheque_number():
