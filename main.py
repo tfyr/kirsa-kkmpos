@@ -101,6 +101,21 @@ def resolve_cancel_cheque():
             raise HTTPException(status_code=500, detail=f"Internal server error {e}")
 
 
+@app.post("/kirsa-kkmpos/print_copy_of_last")
+def resolve_print_copy_of_last():
+    try:
+        if kkt_type=='shtrikh':
+            with ShtrikhCM(kkt_port, kkt_baudrate,) as kkm_cm:
+                ret= kkm_cm.print_copy_of_cheque()
+                return ret
+        else:
+            with VikiCM(kkt_port, kkt_baudrate, viki_options) as kkm_cm:
+                pass
+    except Exception as e:
+        logger.error("Unexpected error in get_kkm_status: %s", e)
+        raise HTTPException(status_code=500, detail=f"Internal server error {e}")
+
+
 @app.post("/kirsa-kkmpos/open_shift")
 def resolve_open_shift():
     try:
